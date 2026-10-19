@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signal Ledger</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        
+        :root {
+            --paper: #f5f2ea;
+            --surface: #ffffff;
+            --surface-2: #fbf9f4;
+            --ink: #201e1b;
+            --ink-soft: #4a443c;
+            --muted: #7a7266;
+            --line: #e1dacb;
+            --accent: #0f6b5c;
+            --accent-strong: #0b4f44;
+            --accent-soft: #e4efea;
+            --gain: #1c8a4b;
+            --gain-soft: #e4f3ea;
+            --loss: #b23b2e;
+            --loss-soft: #fbeae7;
+            --gold: #a8792e;
+            --gold-soft: #f3e9d6;
+            --slate: #3f6672;
+            --slate-soft: #e2edef;
+            --shadow: rgba(32, 30, 27, 0.10);
+            --font-display: 'Source Serif 4', 'Iowan Old Style', Georgia, serif;
+            --font-body: 'IBM Plex Sans', -apple-system, Segoe UI, sans-serif;
+            --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --paper: #15130f;
+                --surface: #1d1a15;
+                --surface-2: #221f19;
+                --ink: #ede7da;
+                --ink-soft: #c9c0af;
+                --muted: #93897a;
+                --line: #34302a;
+                --accent: #4fd1b5;
+                --accent-strong: #7ce8ce;
+                --accent-soft: #1b3a34;
+                --gain: #4ade80;
+                --gain-soft: #163524;
+                --loss: #f87171;
+                --loss-soft: #3a1e1b;
+                --gold: #d8a857;
+                --gold-soft: #3a2f1a;
+                --slate: #8fb6c2;
+                --slate-soft: #1c2f33;
+                --shadow: rgba(0, 0, 0, 0.45);
+            }
+        }
+
+        :root[data-theme="dark"] {
+            --paper: #15130f;
+            --surface: #1d1a15;
+            --surface-2: #221f19;
+            --ink: #ede7da;
+            --ink-soft: #c9c0af;
+            --muted: #93897a;
+            --line: #34302a;
+            --accent: #4fd1b5;
+            --accent-strong: #7ce8ce;
+            --accent-soft: #1b3a34;
+            --gain: #4ade80;
+            --gain-soft: #163524;
+            --loss: #f87171;
+            --loss-soft: #3a1e1b;
+            --gold: #d8a857;
+            --gold-soft: #3a2f1a;
+            --slate: #8fb6c2;
+            --slate-soft: #1c2f33;
+            --shadow: rgba(0, 0, 0, 0.45);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--paper);
+            color: var(--ink);
+            min-height: 100vh;
+            padding: clamp(12px, 3vw, 32px);
+        }
+
+        .sheet {
+            max-width: 1320px;
+            margin: 0 auto;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 24px 60px var(--shadow);
+        }
+
+        /* ── Masthead ─────────────────────────────────────────────── */
+        .masthead {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 20px;
+            padding: 32px clamp(20px, 4vw, 44px) 24px;
+            border-bottom: 1px solid var(--line);
+            background: var(--surface-2);
+        }
+
+        .eyebrow {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .masthead h1 {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: clamp(1.9rem, 4vw, 2.6rem);
+            text-wrap: balance;
+            color: var(--ink);
+        }
+
+        .masthead-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .masthead-meta dl {
+            display: flex;
+            gap: 22px;
+        }
+
+        .masthead-meta dl > div {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+        }
+
+        .masthead-meta dt {
+            font-size: 0.68rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .masthead-meta dd {
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            color: var(--ink-soft);
+        }
+
+        .refresh-controls {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .btn-refresh {
+            font-family: var(--font-body);
+            background: transparent;
+            border: 1px solid var(--line);
+            color: var(--ink-soft);
+            padding: 7px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            transition: border-color 0.2s, color 0.2s;
+        }
+
+        .btn-refresh:hover {
+            border-color: var(--accent);
+            color: var(--accent-strong);
+        }
+
+        .auto-refresh-label {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            cursor: pointer;
+            user-select: none;
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+
+        .auto-refresh-label input[type="checkbox"] {
+            cursor: pointer;
+            width: 15px;
+            height: 15px;
+            accent-color: var(--accent);
+        }
+
+        /* ── Stats strip ──────────────────────────────────────────── */
+        .stats-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            background: var(--surface-2);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .stat-tile {
+            padding: 24px clamp(18px, 3vw, 30px);
+            border-right: 1px solid var(--line);
+        }
+
+        .stat-tile:last-child { border-right: none; }
+
+        .stat-label {
+            font-size: 0.72rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            font-size: 2.1rem;
+            font-weight: 600;
+            color: var(--ink);
+            line-height: 1.1;
+        }
+
+        .stat-value.positive { color: var(--gain); }
+        .stat-value.negative { color: var(--loss); }
+
+        .stat-sublabel {
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-top: 8px;
+        }
+
+        /* ── Best / worst strip ───────────────────────────────────── */
+        .best-worst-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1px;
+            background: var(--line);
+            border-bottom: 1px solid var(--line);
+        }
+
+        /* An author display: grid/flex rule beats the browser's default
+           [hidden] { display: none } regardless of specificity or source
+           order (user-agent styles always lose to author styles of equal
+           specificity) -- so JS setting element.hidden = true silently had
+           no visual effect on either of these without this override. */
+        .best-worst-strip[hidden] {
+            display: none;
+        }
+
+        .trade-highlight {
+            padding: 20px clamp(18px, 3vw, 30px);
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .trade-highlight.gain { border-left: 3px solid var(--gain); }
+        .trade-highlight.loss { border-left: 3px solid var(--loss); }
+        .trade-highlight[hidden] { display: none; }
+
+        .trade-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .trade-symbol {
+            font-family: var(--font-mono);
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .trade-pattern {
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .trade-return {
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+
+        .trade-highlight.gain .trade-return { color: var(--gain); }
+        .trade-highlight.loss .trade-return { color: var(--loss); }
+
+        /* ── Section eyebrow ──────────────────────────────────────── */
+        .section-eyebrow {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+
+        /* ── Charts ───────────────────────────────────────────────── */
+        .charts-section {
+            padding: 32px clamp(18px, 3vw, 30px);
+            background: var(--surface);
+        }
+
+        .chart-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+            gap: 24px;
+            margin-top: 18px;
+        }
+
+        .chart-panel {
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .chart-panel.full-width { grid-column: 1 / -1; }
+
+        .chart-panel h3 {
+            font-family: var(--font-body);
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--ink-soft);
+            margin-bottom: 16px;
+        }
+
+        .chart-panel canvas { max-height: 280px; }
+
+        /* ── Alerts ledger ────────────────────────────────────────── */
+        .alerts-section {
+            padding: 32px clamp(18px, 3vw, 30px) 8px;
+            background: var(--surface);
+            border-top: 1px solid var(--line);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .section-header h2 {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 1.5rem;
+            color: var(--ink);
+        }
+
+        .btn-export {
+            font-family: var(--font-body);
+            background: var(--accent);
+            color: var(--surface);
+            border: none;
+            padding: 9px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .btn-export:hover { background: var(--accent-strong); }
+
+        /* ── Filters toolbar ──────────────────────────────────────── */
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 18px;
+            padding: 16px 0;
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-size: 0.7rem;
+            color: var(--muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .filter-group select,
+        .filter-group input[type="text"],
+        .filter-group input[type="date"] {
+            font-family: var(--font-body);
+            padding: 7px 10px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            min-width: 140px;
+            background: var(--surface);
+            color: var(--ink);
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: 1px;
+        }
+
+        .filter-group input[type="text"] { min-width: 190px; }
+        .filter-group input[type="date"] { min-width: 150px; }
+
+        .filter-buttons { display: flex; gap: 10px; }
+
+        .btn-apply, .btn-clear {
+            font-family: var(--font-body);
+            padding: 7px 16px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 500;
+            background: var(--surface);
+            color: var(--ink-soft);
+            transition: border-color 0.2s, color 0.2s;
+        }
+
+        .btn-apply:hover { border-color: var(--gain); color: var(--gain); }
+        .btn-clear:hover { border-color: var(--loss); color: var(--loss); }
+
+        /* ── Table ────────────────────────────────────────────────── */
+        .table-wrapper {
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface);
+            font-size: 0.86rem;
+        }
+
+        thead {
+            background: var(--surface-2);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            padding: 12px 14px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--line);
+        }
+
+        th:hover { color: var(--accent); }
+
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--line);
+            font-variant-numeric: tabular-nums;
+        }
+
+        tbody tr:hover { background: var(--surface-2); }
+
+        .empty-row {
+            text-align: center;
+            padding: 48px 20px;
+            color: var(--muted);
+        }
+
+        .symbol-cell {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .tv-link {
+            color: var(--accent);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .tv-link:hover { color: var(--accent-strong); text-decoration: underline; }
+
+        .pattern-cell, .tags-cell {
+            font-size: 0.8rem;
+            color: var(--muted);
+            max-width: 280px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .grade-badge {
+            font-family: var(--font-mono);
+            padding: 3px 9px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.76rem;
+            display: inline-block;
+        }
+
+        .grade-aplus { background: var(--gold-soft); color: var(--gold); }
+        .grade-a     { background: var(--accent-soft); color: var(--accent-strong); }
+        .grade-b     { background: var(--slate-soft); color: var(--slate); }
+        .grade-c     { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+
+        .direction-badge {
+            padding: 3px 9px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.76rem;
+            display: inline-block;
+        }
+
+        .direction-badge.bullish { background: var(--gain-soft); color: var(--gain); }
+        .direction-badge.bearish { background: var(--loss-soft); color: var(--loss); }
+
+        .positive { color: var(--gain); font-weight: 600; }
+        .negative { color: var(--loss); font-weight: 600; }
+
+        /* Live/unrealized return -- distinguished from realized gain/loss
+           by taking the accent hue instead of the semantic green/red. */
+        .live-gain, .live-loss {
+            color: var(--accent);
+            font-weight: 600;
+            font-style: italic;
+        }
+
+        .live-tag {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            font-style: normal;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--accent);
+            background: var(--accent-soft);
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-left: 4px;
+        }
+
+        /* Exit reason -- shown when the actual return reflects a
+           stop-loss or target hit intraday, not just the EOD close. */
+        .exit-tag {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-left: 4px;
+        }
+
+        .exit-stop { color: var(--loss); background: var(--loss-soft); }
+        .exit-target { color: var(--gain); background: var(--gain-soft); }
+
+        .table-footer {
+            padding: 14px 4px 22px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        /* ── Responsive ───────────────────────────────────────────── */
+        @media (max-width: 768px) {
+            .masthead { align-items: flex-start; }
+            .masthead-meta { align-items: flex-start; width: 100%; }
+            .masthead-meta dl { flex-wrap: wrap; }
+            .masthead-meta dl > div { align-items: flex-start; }
+
+            .chart-row { grid-template-columns: 1fr; }
+
+            .filters { flex-direction: column; align-items: stretch; }
+            .filter-group select, .filter-group input { width: 100%; min-width: 0; }
+            .filter-buttons { width: 100%; }
+            .btn-apply, .btn-clear { flex: 1; }
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="sheet">
+        <header class="masthead">
+            <div class="masthead-title">
+                <p class="eyebrow">NSE Intraday Screener &middot; Pattern Alert Journal</p>
+                <h1>Signal Ledger</h1>
+            </div>
+            <div class="masthead-meta">
+                <dl>
+                    <div><dt>Window</dt><dd>Last 30 days</dd></div>
+                    <div><dt>Generated</dt><dd id="lastUpdated">2026-10-19 19:40:10 IST</dd></div>
+                </dl>
+                <div class="refresh-controls">
+                    <a href="history.html" class="btn-refresh" style="text-decoration:none;display:inline-block;">🏛️ History Vault &rarr;</a>
+                    <a href="backtest.html" class="btn-refresh" style="text-decoration:none;display:inline-block;">Backtest ledger &rarr;</a>
+                    <button onclick="location.reload()" class="btn-refresh">Refresh now</button>
+                    <label class="auto-refresh-label">
+                        <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()">
+                        Auto-refresh &middot; 60s
+                    </label>
+                </div>
+            </div>
+        </header>
+
+        
+        <section class="stats-strip">
+            <div class="stat-tile">
+                <div class="stat-label">Total alerts</div>
+                <div class="stat-value" id="statTotalAlerts">0</div>
+                <div class="stat-sublabel" id="statTotalAlertsSub">last 30 days</div>
+            </div>
+
+            <div class="stat-tile">
+                <div class="stat-label">Win rate</div>
+                <div class="stat-value negative" id="statWinRate">0%</div>
+                <div class="stat-sublabel" id="statWinRateSub">0W / 0L</div>
+            </div>
+
+            <div class="stat-tile">
+                <div class="stat-label">Avg return</div>
+                <div class="stat-value negative" id="statAvgReturn">+0.00%</div>
+                <div class="stat-sublabel">per closed position</div>
+            </div>
+
+            <div class="stat-tile">
+                <div class="stat-label">Closed positions</div>
+                <div class="stat-value" id="statClosedPositions">0</div>
+                <div class="stat-sublabel" id="statClosedPositionsSub">of 0 total</div>
+            </div>
+
+            
+            <div class="stat-tile" id="statOpenLiveTile" hidden>
+                <div class="stat-label">Open, live</div>
+                <div class="stat-value live-loss" id="statOpenLive">+0.00%</div>
+                <div class="stat-sublabel" id="statOpenLiveSub">0 positions, unrealized</div>
+            </div>
+        
+        </section>
+
+        
+        <section class="best-worst-strip" id="bestWorstSection" hidden>
+            <div class="trade-highlight gain" id="bestTradeTile" hidden>
+                <div class="trade-label">Best trade</div>
+                <div class="trade-symbol" id="bestTradeSymbol"></div>
+                <div class="trade-return" id="bestTradeReturn"></div>
+                <div class="trade-pattern" id="bestTradePattern"></div>
+            </div>
+            <div class="trade-highlight loss" id="worstTradeTile" hidden>
+                <div class="trade-label">Worst trade</div>
+                <div class="trade-symbol" id="worstTradeSymbol"></div>
+                <div class="trade-return" id="worstTradeReturn"></div>
+                <div class="trade-pattern" id="worstTradePattern"></div>
+            </div>
+        </section>
+
+        <section class="best-worst-strip" id="bestWorstOpenSection" hidden>
+            <div class="trade-highlight gain" id="bestOpenTradeTile" hidden>
+                <div class="trade-label">Best current (open) trade</div>
+                <div class="trade-symbol" id="bestOpenTradeSymbol"></div>
+                <div class="trade-return" id="bestOpenTradeReturn"></div>
+                <div class="trade-pattern" id="bestOpenTradePattern"></div>
+            </div>
+            <div class="trade-highlight loss" id="worstOpenTradeTile" hidden>
+                <div class="trade-label">Worst current (open) trade</div>
+                <div class="trade-symbol" id="worstOpenTradeSymbol"></div>
+                <div class="trade-return" id="worstOpenTradeReturn"></div>
+                <div class="trade-pattern" id="worstOpenTradePattern"></div>
+            </div>
+        </section>
+        
+        
+
+        
+        <section class="charts-section">
+            <p class="section-eyebrow">Performance</p>
+            <div class="chart-row">
+                <div class="chart-panel">
+                    <h3>Grade distribution</h3>
+                    <canvas id="gradeDistChart"></canvas>
+                </div>
+
+                <div class="chart-panel">
+                    <h3>Win rate by grade</h3>
+                    <canvas id="gradePerformanceChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-row">
+                <div class="chart-panel">
+                    <h3>Top patterns, by wins</h3>
+                    <canvas id="patternPerformanceChart"></canvas>
+                </div>
+
+                <div class="chart-panel">
+                    <h3>Daily alert count</h3>
+                    <canvas id="dailyCountChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-row">
+                <div class="chart-panel full-width">
+                    <h3>Sector performance, avg return %</h3>
+                    <canvas id="sectorPerformanceChart"></canvas>
+                </div>
+            </div>
+        </section>
+        
+
+        
+        <section class="alerts-section">
+            <div class="section-header">
+                <div>
+                    <p class="section-eyebrow">Blotter</p>
+                    <h2>All alerts</h2>
+                </div>
+                <button onclick="exportToCSV()" class="btn-export">Export CSV</button>
+            </div>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="filterDateFrom">From Date:</label>
+                    <input type="date" id="filterDateFrom" value="2026-10-19" min="2026-10-19" max="2026-10-19">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterDateTo">To Date:</label>
+                    <input type="date" id="filterDateTo" value="2026-10-19" min="2026-10-19" max="2026-10-19">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterGrade">Grade:</label>
+                    <select id="filterGrade">
+                        <option value="">All</option>
+                        
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterSector">Sector:</label>
+                    <select id="filterSector">
+                        <option value="">All</option>
+                        
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterDirection">Direction:</label>
+                    <select id="filterDirection">
+                        <option value="">All</option>
+                        <option value="BULLISH">BULLISH</option> <option value="BEARISH">BEARISH</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterStatus">Status:</label>
+                    <select id="filterStatus">
+                        <option value="">All</option>
+                        <option value="closed">Closed</option>
+                        <option value="open">Open</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="searchSymbol">Search:</label>
+                    <input type="text" id="searchSymbol" placeholder="Symbol or pattern...">
+                </div>
+                
+                <div class="filter-buttons">
+                    <button onclick="applyFilters()" class="btn-apply">✓ Apply Filters</button>
+                    <button onclick="clearFilters()" class="btn-clear">✕ Clear</button>
+                </div>
+            </div>
+            
+            <div class="table-wrapper">
+                <table id="alertsTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable(0)" data-type="date">Date/Time ↕</th>
+                            <th onclick="sortTable(1)" data-type="text">Symbol ↕</th>
+                            <th onclick="sortTable(2)" data-type="text">Grade ↕</th>
+                            <th onclick="sortTable(3)" data-type="text">Direction ↕</th>
+                            <th onclick="sortTable(4)" data-type="number">Entry ↕</th>
+                            <th onclick="sortTable(5)" data-type="number">Target ↕</th>
+                            <th onclick="sortTable(6)" data-type="number">Stop ↕</th>
+                            <th onclick="sortTable(7)" data-type="number">Close ↕</th>
+                            <th onclick="sortTable(8)" data-type="number">Return % ↕</th>
+                            <th onclick="sortTable(9)" data-type="text">Sector ↕</th>
+                            <th>Pattern</th>
+                            <th>Tags</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr>
+                    <td colspan="12" class="empty-row">
+                        No alerts found in this window.<br>
+                        <small>Run the scanner during market hours to populate the ledger.</small>
+                    </td>
+                </tr>
+            
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="table-footer">
+                <span id="rowCount">Showing 0 alerts</span>
+            </div>
+        </section>
+        
+
+        
+        <section class="alerts-section" id="recentTriggersSection">
+            <div class="section-header">
+                <div>
+                    <p class="section-eyebrow">Backtest</p>
+                    <h2>Recent triggers</h2>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table><tbody>
+                    <tr><td class="empty-row">
+                        No backtest.db found, no runs in it, or nothing fired in the
+                        lookback window across any run.<br>
+                        <small>Run <code>python run_backtest.py</code>, then regenerate
+                        this dashboard -- or use
+                        <code>python scripts/show_recent_triggers.py</code> directly.</small>
+                    </td></tr>
+                </tbody></table>
+            </div>
+        </section>
+        
+    </div>
+
+    <script>
+        
+        // Chart colors -- mirrors the CSS custom properties in the stylesheet.
+        const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+            && document.documentElement.getAttribute('data-theme') !== 'light'
+            || document.documentElement.getAttribute('data-theme') === 'dark';
+
+        const colors = isDark ? {
+            aplus: '#d8a857', a: '#4fd1b5', b: '#8fb6c2', c: '#93897a',
+            bullish: '#4ade80', bearish: '#f87171',
+            text: '#c9c0af', grid: '#34302a',
+        } : {
+            aplus: '#a8792e', a: '#0f6b5c', b: '#3f6672', c: '#7a7266',
+            bullish: '#1c8a4b', bearish: '#b23b2e',
+            text: '#4a443c', grid: '#e1dacb',
+        };
+
+        Chart.defaults.color = colors.text;
+        Chart.defaults.borderColor = colors.grid;
+        Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
+
+        // Auto-refresh functionality
+        let autoRefreshInterval = null;
+        
+        function toggleAutoRefresh() {
+            const checkbox = document.getElementById('autoRefresh');
+            if (checkbox.checked) {
+                // Start auto-refresh every 60 seconds
+                autoRefreshInterval = setInterval(() => {
+                    updateLastRefreshTime();
+                    location.reload();
+                }, 60000);
+                console.log('Auto-refresh enabled (60s)');
+            } else {
+                // Stop auto-refresh
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+                console.log('Auto-refresh disabled');
+            }
+        }
+        
+        function updateLastRefreshTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleString('en-IN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            document.getElementById('lastUpdated').textContent = 'Updated: ' + timeStr;
+        }
+        
+        // Grade Distribution Chart
+        const gradeDistChart = new Chart(document.getElementById('gradeDistChart'), {
+            type: 'doughnut',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    backgroundColor: [
+                        colors.aplus,
+                        colors.a,
+                        colors.b,
+                        colors.c,
+                    ],
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    title: {
+                        display: false,
+                    }
+                }
+            }
+        });
+        
+        // Grade Performance Chart
+        const gradePerformanceChart = new Chart(document.getElementById('gradePerformanceChart'), {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Win Rate %',
+                    data: [],
+                    backgroundColor: [
+                        colors.aplus,
+                        colors.a,
+                        colors.b,
+                        colors.c,
+                    ].slice(0, 0),
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false,
+                    },
+                }
+            }
+        });
+        
+        // Pattern Performance Chart
+        const patternPerformanceChart = new Chart(document.getElementById('patternPerformanceChart'), {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Wins',
+                        data: [],
+                        backgroundColor: colors.bullish,
+                    },
+                    {
+                        label: 'Losses',
+                        data: [],
+                        backgroundColor: colors.bearish,
+                    },
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    x: {
+                        stacked: true,
+                    },
+                    y: {
+                        stacked: true,
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                }
+            }
+        });
+        
+        // Daily Count Chart
+        const dailyCountChart = new Chart(document.getElementById('dailyCountChart'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'A+',
+                        data: [],
+                        borderColor: colors.aplus,
+                        backgroundColor: colors.aplus + '33',
+                        fill: true,
+                    },
+                    {
+                        label: 'A',
+                        data: [],
+                        borderColor: colors.a,
+                        backgroundColor: colors.a + '33',
+                        fill: true,
+                    },
+                    {
+                        label: 'B',
+                        data: [],
+                        borderColor: colors.b,
+                        backgroundColor: colors.b + '33',
+                        fill: true,
+                    },
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        stacked: false,
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                }
+            }
+        });
+        
+        // Sector Performance Chart
+        const sectorPerformanceChart = new Chart(document.getElementById('sectorPerformanceChart'), {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Avg Return %',
+                    data: [],
+                    backgroundColor: [].map(r => (r || 0) > 0 ? colors.bullish : colors.bearish),
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false,
+                    },
+                }
+            }
+        });
+        
+        // Table filtering with date range -- also drives recomputeDashboard()
+        // below, so the stat tiles, best/worst trade and every chart reflect
+        // the filtered rows instead of staying frozen at the full-window
+        // figures baked in at generation time.
+        function applyFilters() {
+            const dateFrom = document.getElementById('filterDateFrom').value;
+            const dateTo = document.getElementById('filterDateTo').value;
+            const grade = document.getElementById('filterGrade').value.toLowerCase();
+            const sector = document.getElementById('filterSector').value.toLowerCase();
+            const direction = document.getElementById('filterDirection').value.toLowerCase();
+            const status = document.getElementById('filterStatus').value.toLowerCase();
+            const search = document.getElementById('searchSymbol').value.toLowerCase();
+
+            const table = document.getElementById('alertsTable');
+            const rows = table.getElementsByTagName('tr');
+            let visibleCount = 0;
+
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row.hasAttribute('data-grade')) continue; // the "no alerts" placeholder row
+
+                // Use the pre-computed data-day attribute ("YYYY-MM-DD")
+                // instead of re-parsing the displayed timestamp cell.
+                // Row timestamps are ISO ("2026-09-11T10:30:00"), and any
+                // attempt to split that cell text on an assumed separator
+                // is fragile -- splitting on 'T' or ' ' both previously
+                // left the FULL timestamp in rowDate when the guess was
+                // wrong, which always sorts after its own plain date, so
+                // the `rowDate > dateTo` check excluded every row on any
+                // day that was actually selected.
+                const rowDate = row.getAttribute('data-day');
+
+                const rowGrade = row.getAttribute('data-grade').toLowerCase();
+                const rowSector = row.getAttribute('data-sector').toLowerCase();
+                const rowDirection = row.getAttribute('data-direction').toLowerCase();
+                const rowStatus = row.getAttribute('data-status').toLowerCase();
+                const rowText = row.textContent.toLowerCase();
+
+                let show = true;
+
+                // Date range filter
+                if (dateFrom && rowDate < dateFrom) show = false;
+                if (dateTo && rowDate > dateTo) show = false;
+
+                // Other filters
+                if (grade && rowGrade !== grade) show = false;
+                if (sector && rowSector !== sector) show = false;
+                if (direction && rowDirection !== direction) show = false;
+                if (status && rowStatus !== status) show = false;
+                if (search && !rowText.includes(search)) show = false;
+
+                row.hidden = !show;
+                if (show) visibleCount++;
+            }
+
+            document.getElementById('rowCount').textContent = `Showing ${visibleCount} of ${rows.length - 1} alerts`;
+            recomputeDashboard();
+        }
+
+        // Recompute every stat tile, the best/worst trade highlight, and all
+        // five charts from whichever rows are currently visible (i.e. match
+        // the active filters) -- reading the data-* attributes each <tr>
+        // carries rather than re-querying the database.
+        function recomputeDashboard() {
+            const gradeOrder = ['A+', 'A', 'B', 'C'];
+            const gradeKey = { 'A+': 'aplus', 'A': 'a', 'B': 'b', 'C': 'c' };
+            const rows = Array.from(document.querySelectorAll('#alertsTable tbody tr'))
+                .filter(r => !r.hidden && r.hasAttribute('data-grade'))
+                .map(r => ({
+                    grade: r.getAttribute('data-grade'),
+                    sector: r.getAttribute('data-sector'),
+                    status: r.getAttribute('data-status'),
+                    live: r.getAttribute('data-live') === '1',
+                    realized: r.getAttribute('data-realized') === '1',
+                    ret: r.getAttribute('data-return') === '' ? null : parseFloat(r.getAttribute('data-return')),
+                    day: r.getAttribute('data-day'),
+                    screen: r.getAttribute('data-screen') || '',
+                    symbol: r.querySelector('.symbol-cell')?.getAttribute('data-raw') || '',
+                }));
+
+            // "Closed" includes both an EOD close AND an intraday SL/target
+            // hit (realized) -- a stop or target already breached today is
+            // a determined outcome, same as an EOD close, just realized
+            // earlier. Without this, a trade that hit its stop this
+            // morning counted toward neither "closed" (win rate, avg
+            // return, best/worst) nor "open, live" (it isn't fluctuating
+            // anymore) -- it fell through both buckets entirely.
+            const closed = rows.filter(r => (r.status === 'closed' || r.realized) && r.ret !== null);
+            const openLive = rows.filter(r => r.status === 'open' && r.live && !r.realized && r.ret !== null);
+            const wins = closed.filter(r => r.ret > 0);
+
+            // ── Stat tiles ───────────────────────────────────────────
+            document.getElementById('statTotalAlerts').textContent = rows.length;
+            document.getElementById('statTotalAlertsSub').textContent =
+                rows.length ? `${new Set(rows.map(r => r.day)).size} day(s) in view` : 'no alerts in view';
+
+            const winRate = closed.length ? Math.round((wins.length / closed.length) * 1000) / 10 : 0;
+            const winRateEl = document.getElementById('statWinRate');
+            winRateEl.textContent = winRate + '%';
+            winRateEl.className = 'stat-value ' + (winRate >= 60 ? 'positive' : 'negative');
+            document.getElementById('statWinRateSub').textContent = `${wins.length}W / ${closed.length - wins.length}L`;
+
+            const avgReturn = closed.length
+                ? Math.round((closed.reduce((s, r) => s + r.ret, 0) / closed.length) * 100) / 100
+                : 0;
+            const avgReturnEl = document.getElementById('statAvgReturn');
+            avgReturnEl.textContent = (avgReturn >= 0 ? '+' : '') + avgReturn.toFixed(2) + '%';
+            avgReturnEl.className = 'stat-value ' + (avgReturn > 0 ? 'positive' : 'negative');
+
+            document.getElementById('statClosedPositions').textContent = closed.length;
+            document.getElementById('statClosedPositionsSub').textContent = `of ${rows.length} in view`;
+
+            const openTile = document.getElementById('statOpenLiveTile');
+            if (openLive.length) {
+                const openAvg = Math.round((openLive.reduce((s, r) => s + r.ret, 0) / openLive.length) * 100) / 100;
+                openTile.hidden = false;
+                const openEl = document.getElementById('statOpenLive');
+                openEl.textContent = (openAvg >= 0 ? '+' : '') + openAvg.toFixed(2) + '%';
+                openEl.className = 'stat-value ' + (openAvg > 0 ? 'live-gain' : 'live-loss');
+                document.getElementById('statOpenLiveSub').textContent =
+                    `${openLive.length} position${openLive.length !== 1 ? 's' : ''}, unrealized`;
+            } else {
+                openTile.hidden = true;
+            }
+
+            // ── Best / worst trade ──────────────────────────────────
+            const bestSection = document.getElementById('bestWorstSection');
+            const bestTile = document.getElementById('bestTradeTile');
+            const worstTile = document.getElementById('worstTradeTile');
+            if (closed.length) {
+                bestSection.hidden = false;
+                const best = closed.reduce((a, b) => (b.ret > a.ret ? b : a));
+                const worst = closed.reduce((a, b) => (b.ret < a.ret ? b : a));
+                bestTile.hidden = false;
+                document.getElementById('bestTradeSymbol').textContent = best.symbol;
+                document.getElementById('bestTradeReturn').textContent = (best.ret >= 0 ? '+' : '') + best.ret.toFixed(2) + '%';
+                document.getElementById('bestTradePattern').textContent = best.screen.slice(0, 50);
+                worstTile.hidden = false;
+                document.getElementById('worstTradeSymbol').textContent = worst.symbol;
+                document.getElementById('worstTradeReturn').textContent = (worst.ret >= 0 ? '+' : '') + worst.ret.toFixed(2) + '%';
+                document.getElementById('worstTradePattern').textContent = worst.screen.slice(0, 50);
+            } else {
+                bestSection.hidden = true;
+            }
+
+            // ── Best / worst CURRENT (still-open, unrealized) trade ──
+            const bestOpenSection = document.getElementById('bestWorstOpenSection');
+            const bestOpenTile = document.getElementById('bestOpenTradeTile');
+            const worstOpenTile = document.getElementById('worstOpenTradeTile');
+            if (openLive.length) {
+                bestOpenSection.hidden = false;
+                const bestOpen = openLive.reduce((a, b) => (b.ret > a.ret ? b : a));
+                const worstOpen = openLive.reduce((a, b) => (b.ret < a.ret ? b : a));
+                bestOpenTile.hidden = false;
+                document.getElementById('bestOpenTradeSymbol').textContent = bestOpen.symbol;
+                document.getElementById('bestOpenTradeReturn').textContent = (bestOpen.ret >= 0 ? '+' : '') + bestOpen.ret.toFixed(2) + '%';
+                document.getElementById('bestOpenTradePattern').textContent = bestOpen.screen.slice(0, 50);
+                worstOpenTile.hidden = false;
+                document.getElementById('worstOpenTradeSymbol').textContent = worstOpen.symbol;
+                document.getElementById('worstOpenTradeReturn').textContent = (worstOpen.ret >= 0 ? '+' : '') + worstOpen.ret.toFixed(2) + '%';
+                document.getElementById('worstOpenTradePattern').textContent = worstOpen.screen.slice(0, 50);
+            } else {
+                bestOpenSection.hidden = true;
+            }
+
+            // ── Charts ───────────────────────────────────────────────
+            // Grade distribution: every visible row with a real grade.
+            const gradedRows = rows.filter(r => gradeOrder.includes(r.grade));
+            const distLabels = gradeOrder.filter(g => gradedRows.some(r => r.grade === g));
+            gradeDistChart.data.labels = distLabels;
+            gradeDistChart.data.datasets[0].data = distLabels.map(g => gradedRows.filter(r => r.grade === g).length);
+            gradeDistChart.data.datasets[0].backgroundColor = distLabels.map(g => colors[gradeKey[g]]);
+            gradeDistChart.update();
+
+            // Win rate by grade: among visible closed rows.
+            const closedGraded = closed.filter(r => gradeOrder.includes(r.grade));
+            const perfLabels = gradeOrder.filter(g => closedGraded.some(r => r.grade === g));
+            gradePerformanceChart.data.labels = perfLabels;
+            gradePerformanceChart.data.datasets[0].data = perfLabels.map(g => {
+                const inGrade = closedGraded.filter(r => r.grade === g);
+                return Math.round((inGrade.filter(r => r.ret > 0).length / inGrade.length) * 1000) / 10;
+            });
+            gradePerformanceChart.data.datasets[0].backgroundColor = perfLabels.map(g => colors[gradeKey[g]]);
+            gradePerformanceChart.update();
+
+            // Top patterns by wins: among visible closed rows.
+            const byPattern = {};
+            closed.forEach(r => {
+                if (!r.screen) return;
+                if (!byPattern[r.screen]) byPattern[r.screen] = { total: 0, wins: 0 };
+                byPattern[r.screen].total++;
+                if (r.ret > 0) byPattern[r.screen].wins++;
+            });
+            const topPatterns = Object.entries(byPattern)
+                .filter(([, v]) => v.total >= 3)
+                .sort((a, b) => b[1].wins - a[1].wins)
+                .slice(0, 15);
+            patternPerformanceChart.data.labels = topPatterns.map(([k]) => k.length > 30 ? k.slice(0, 30) + '...' : k);
+            patternPerformanceChart.data.datasets[0].data = topPatterns.map(([, v]) => v.wins);
+            patternPerformanceChart.data.datasets[1].data = topPatterns.map(([, v]) => v.total - v.wins);
+            patternPerformanceChart.update();
+
+            // Daily alert count by grade: every visible row, regardless of status.
+            const days = [...new Set(rows.map(r => r.day))].sort();
+            dailyCountChart.data.labels = days;
+            for (const [key, g] of Object.entries({ a_plus: 'A+', a: 'A', b: 'B' })) {
+                dailyCountChart.data.datasets[
+                    key === 'a_plus' ? 0 : key === 'a' ? 1 : 2
+                ].data = days.map(d => rows.filter(r => r.day === d && r.grade === g).length);
+            }
+            dailyCountChart.update();
+
+            // Sector avg return: among visible closed rows, >=3 alerts (same
+            // threshold as the server-side query, for consistent meaning).
+            const bySector = {};
+            closed.forEach(r => {
+                if (!r.sector) return;
+                if (!bySector[r.sector]) bySector[r.sector] = [];
+                bySector[r.sector].push(r.ret);
+            });
+            const sectorRows = Object.entries(bySector)
+                .filter(([, rets]) => rets.length >= 3)
+                .map(([sector, rets]) => [sector, Math.round((rets.reduce((s, x) => s + x, 0) / rets.length) * 100) / 100])
+                .sort((a, b) => b[1] - a[1]);
+            sectorPerformanceChart.data.labels = sectorRows.map(([s]) => s);
+            sectorPerformanceChart.data.datasets[0].data = sectorRows.map(([, avg]) => avg);
+            sectorPerformanceChart.data.datasets[0].backgroundColor = sectorRows.map(([, avg]) => avg > 0 ? colors.bullish : colors.bearish);
+            sectorPerformanceChart.update();
+        }
+
+        function clearFilters() {
+            // Get original date range
+            const dateInputs = document.querySelectorAll('input[type="date"]');
+            if (dateInputs.length >= 2) {
+                dateInputs[0].value = dateInputs[0].min; // Reset to min date
+                dateInputs[1].value = dateInputs[1].max; // Reset to max date
+            }
+            
+            document.getElementById('filterGrade').value = '';
+            document.getElementById('filterSector').value = '';
+            document.getElementById('filterDirection').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('searchSymbol').value = '';
+            applyFilters();
+        }
+        
+        // Table sorting with proper date handling
+        let sortDirection = {};
+        function sortTable(columnIndex) {
+            const table = document.getElementById('alertsTable');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const th = table.querySelectorAll('th')[columnIndex];
+            const dataType = th.getAttribute('data-type');
+            
+            const direction = sortDirection[columnIndex] === 'asc' ? 'desc' : 'asc';
+            sortDirection[columnIndex] = direction;
+            
+            rows.sort((a, b) => {
+                let aVal, bVal;
+                
+                // Use data-sort-value if available (for dates)
+                const aSortVal = a.cells[columnIndex].getAttribute('data-sort-value');
+                const bSortVal = b.cells[columnIndex].getAttribute('data-sort-value');
+                
+                if (aSortVal && bSortVal) {
+                    aVal = aSortVal;
+                    bVal = bSortVal;
+                } else {
+                    aVal = a.cells[columnIndex].textContent.trim();
+                    bVal = b.cells[columnIndex].textContent.trim();
+                }
+                
+                // Handle different data types
+                if (dataType === 'number') {
+                    const aNum = parseFloat(aVal.replace(/[^0-9.-]/g, ''));
+                    const bNum = parseFloat(bVal.replace(/[^0-9.-]/g, ''));
+                    return direction === 'asc' ? aNum - bNum : bNum - aNum;
+                } else if (dataType === 'date') {
+                    return direction === 'asc' 
+                        ? aVal.localeCompare(bVal)
+                        : bVal.localeCompare(aVal);
+                } else {
+                    return direction === 'asc' 
+                        ? aVal.localeCompare(bVal)
+                        : bVal.localeCompare(aVal);
+                }
+            });
+            
+            rows.forEach(row => tbody.appendChild(row));
+        }
+        
+        // Export to CSV
+        function exportToCSV() {
+            const table = document.getElementById('alertsTable');
+            const rows = table.querySelectorAll('tr');
+            let csv = [];
+            
+            rows.forEach(row => {
+                if (!row.hidden) {
+                    const cols = row.querySelectorAll('td, th');
+                    const rowData = Array.from(cols).map(col => {
+                        const raw = col.getAttribute('data-raw');
+                        let text = (raw !== null ? raw : col.textContent).trim();
+                        text = text.replace(/"/g, '""');
+                        return `"${text}"`;
+                    });
+                    csv.push(rowData.join(','));
+                }
+            });
+            
+            const csvContent = csv.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'fyers_alerts_' + new Date().toISOString().split('T')[0] + '.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+        
+        // Auto-apply filters on Enter key
+        document.getElementById('searchSymbol').addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                applyFilters();
+            }
+        });
+        
+        // Restore auto-refresh state from localStorage
+        window.addEventListener('load', function() {
+            // filterDateFrom's HTML value already defaults to the latest
+            // day with data (dashboard_html.py), but the table itself
+            // renders every row server-side -- applyFilters() has to run
+            // once on load to actually narrow the visible rows, or the
+            // date pickers show "today" while the table still shows the
+            // full lookback window until the user clicks Apply.
+            applyFilters();
+
+            const autoRefreshEnabled = localStorage.getItem('autoRefreshEnabled') === 'true';
+            if (autoRefreshEnabled) {
+                document.getElementById('autoRefresh').checked = true;
+                toggleAutoRefresh();
+            }
+        });
+        
+        // Save auto-refresh state to localStorage
+        document.getElementById('autoRefresh').addEventListener('change', function() {
+            localStorage.setItem('autoRefreshEnabled', this.checked);
+        });
+        
+    </script>
+</body>
+</html>
